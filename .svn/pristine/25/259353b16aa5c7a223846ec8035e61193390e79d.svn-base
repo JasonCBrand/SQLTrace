@@ -1,0 +1,219 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace SQLTrace
+{
+    public partial class Form1 : Form
+    {
+        public string fname;
+        public OpenFileDialog openFileDialog1;
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
+        private void button1_Click(object sender, EventArgs e)
+        {
+            string newLine;
+            string curText = "";
+            string midBlock = "";
+            string searchBlock = "";
+            string fName;
+            string fBlock;
+            string mid = "";
+            string file = "";
+            string a;
+            int fBlockEnd;
+            int fStart;
+            int fLength;
+            int x;
+            int temp = 0;
+            int temp1 = 0;
+            int blockEnd = 0;
+            int length = 1;
+            int findStart = 0;
+            int fileEnd = 0;
+            int start = 0;
+            int firstStart = 0;
+            openFileDialog1 = new OpenFileDialog
+            {
+                Title = "Browse Files"
+            };
+            //if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            //{
+            //    openFileDialog1.CheckFileExists = true;
+            //    openFileDialog1.CheckPathExists = true;
+            //    textBox3.Text = openFileDialog1.FileName;
+            //    fname = textBox3.Text;
+            //}
+            fname = "F:\\Jason\\Jason\\Downloads\\Production_Order.sql";
+            textBox3.Text = fname;
+            try
+            {
+                file = File.ReadAllText(fname);
+                if (file.Length > 0) 
+                { 
+                    fileEnd = file.Length;
+                } 
+                else
+                {
+                    MessageBox.Show("No file selected");
+                    fileEnd = 0;
+                }
+                //write original contents to textbox 4
+                textBox4.Text = file;
+                //format contents file by evaluating statement type (UPDATE, INSERT INTO) find first occurence of --, then find SECOND occurence of keyword
+                //to process block. Each block starts with --
+                temp = file.IndexOf("INSERT INTO");
+                temp1 = file.IndexOf("UPDATE");
+                if (temp != -1 && temp < temp1)
+                {
+                    findStart = temp;
+                }
+                else
+                {
+                    findStart = temp1;
+                }
+                firstStart = findStart; //firststart counter to keep track of which loop we're in
+                //outer loop to move onto next block                       
+                while (findStart <= fileEnd)
+                {
+                    start = findStart;
+                    if (findStart > temp1) //check if next block is UPDATE or INSERT
+                    { //INSERT
+                        if (start > firstStart)
+                        {
+                            a = file.Substring((start), (file.Length - (start)));
+                            x = a.IndexOf("INSERT INTO");
+                            mid = file.Substring((start + x + 2), (file.Length - (start + x + 2)));
+                            temp = mid.IndexOf("UPDATE");
+                            if (temp != -1 && temp < mid.IndexOf("INSERT INTO"))
+                            {
+                                blockEnd = mid.IndexOf("UPDATE");
+                            }
+                            else
+                            {
+                                blockEnd = mid.IndexOf("INSERT INTO");
+                            }
+                            searchBlock = file.Substring((start + x), blockEnd);
+                        }
+                        else
+                        {
+                            mid = file.Substring(start + 1, (file.Length - (start + 1)));
+                            blockEnd = mid.IndexOf("INSERT INTO"); //this is 2nd occurence of -- so substring of start, end gives us our first block.. 2nd loop this is 1st occ
+                            searchBlock = file.Substring(start, blockEnd);
+                        }
+                        fBlockEnd = searchBlock.IndexOf(")")+1;
+                        fStart = searchBlock.IndexOf("(") + 1; //end of field names so searchblock.substring(start,fstart) returns insert into up to field names )
+                        start = searchBlock.IndexOf("VALUES"); //start of values
+                        curText += searchBlock.Substring(0, start);
+                        midBlock = searchBlock.Substring(start, (searchBlock.Length - start));
+                        length = midBlock.IndexOf("( ");
+                        newLine = midBlock.Substring(0, length + 1);
+                        curText += Environment.NewLine + newLine;
+                        start += length + 1;
+                        //inner loop to parse current statement
+                        while (start <= blockEnd)
+                        {
+                            fBlock = searchBlock.Substring(fStart, fBlockEnd - fStart);
+                            fLength = fBlock.IndexOf(",");
+                            //Console.WriteLine("start: " + start);
+                            midBlock = searchBlock.Substring(start, blockEnd - start);
+                            length = midBlock.IndexOf(",");
+                            if (length != -1)
+                            {
+                                fName = searchBlock.Substring(fStart, fLength);
+                                newLine = searchBlock.Substring(start, length);
+                                start +=  length + 1;
+                                fStart += fLength + 1;
+                                curText += Environment.NewLine + "," + newLine + " --" + fName;
+                            }
+                            else
+                            {
+                                length = midBlock.IndexOf(" )");
+                                fLength = fBlock.IndexOf(" )"); 
+                                fName = searchBlock.Substring(fStart, fLength);
+                                newLine = searchBlock.Substring(start, length);
+                                fStart += fLength + 1;
+                                curText += Environment.NewLine + "," + newLine + " --" + fName;
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    { //UPDATE ***NEED TO PROGRAM FOR UPDATES, DUPES INSERTS WHERE THERE ARE UPDATES AS OF 4/3/2020***
+
+                        if (start > firstStart) //check to see if its first time in loop or not
+                        {
+                            a = file.Substring((start), (file.Length - (start)));
+                            x = a.IndexOf("INSERT INTO"); //check if next loop is INSERT INTO 
+                            mid = file.Substring((start + x + 2), (file.Length - (start + x + 2)));
+                            temp = mid.IndexOf("UPDATE");
+                            if (temp != -1 && temp < mid.IndexOf("INSERT INTO"))
+                            {
+                                blockEnd = mid.IndexOf("UPDATE");
+                            }
+                            else
+                            {
+                                blockEnd = mid.IndexOf("INSERT INTO");
+                            }
+                            searchBlock = file.Substring((start + x), blockEnd);
+                        }
+                        else
+                        { //first time in loop
+                            a = file.Substring((start), (file.Length - (start)));
+                            x = a.IndexOf("INSERT INTO"); //check if next loop is INSERT INTO 
+                            mid = file.Substring((start + x + 2), (file.Length - (start + x + 2)));
+                            temp = mid.IndexOf("UPDATE");
+                            if (temp != -1 && temp < mid.IndexOf("INSERT INTO"))
+                            {
+                                blockEnd = mid.IndexOf("UPDATE");
+                            }
+                            else
+                            {
+                                blockEnd = mid.IndexOf("INSERT INTO");
+                            }
+                            searchBlock = file.Substring((start + x), blockEnd);
+                        }
+                        findStart += start + length + 1;
+                    }
+                    findStart += start + length + 1;
+                    curText += Environment.NewLine;
+                    textBox5.Text += curText;
+                    //Console.WriteLine("\nEnd loop start: " + start + " findStart: " + findStart);
+                }
+         
+            }
+            catch (Exception ex)
+            {
+                DialogResult res = MessageBox.Show(("Error: " + ex.Message),"Error", MessageBoxButtons.OK);
+                if (res == DialogResult.OK)
+                {
+                    //Application.Exit();
+                }
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
+        }
+    }
+}
